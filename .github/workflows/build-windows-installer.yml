@@ -43,7 +43,7 @@ jobs:
       - name: Create installer script
         shell: pwsh
         run: |
-          $installerScript = @'
+          $installerScript = @"
 [Setup]
 AppName=Simuka Upenye (Pvt) Ltd Delivery Note System
 AppVersion=2.0 (Build 2025-10-29)
@@ -70,7 +70,7 @@ Filename: "{app}\DeliveryNote.exe"; Description: "Launch Delivery Note System"; 
 [Messages]
 SetupAppTitle=Simuka Upenye (Pvt) Ltd — Delivery Note System Installer
 FinishedLabel=Installation Complete — Starting Application…
-'@
+"@
           Set-Content -Path installer_script.iss -Value $installerScript -Encoding UTF8
 
       - name: Build installer
