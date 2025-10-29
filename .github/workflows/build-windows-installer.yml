@@ -2,8 +2,7 @@ name: Build Windows Installer
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -24,33 +23,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller pillow
 
+      - name: Verify icon (optional)
+        shell: pwsh
+        run: |
+          if (Test-Path "icon.ico") {
+            Write-Host "icon.ico found ✅"
+          } else {
+            Write-Host "icon.ico not found ⚠️"
+          }
+
       - name: Build Windows EXE
         shell: pwsh
         run: |
-          # Validate icon.ico if it exists
           if (Test-Path "icon.ico") {
-              Write-Host "🔍 Checking icon validity..."
-              python - <<'EOF'
-from PIL import Image
-try:
-    Image.open("icon.ico").verify()
-    print("✅ icon.ico is valid")
-except Exception as e:
-    print("❌ icon.ico invalid:", e)
-    open("skip_icon.txt", "w").write("1")
-EOF
-          }
-
-          # Build executable depending on icon validity
-          if (Test-Path "skip_icon.txt") {
-              Write-Host "⚠️ Skipping icon.ico due to validation failure"
-              pyinstaller --noconfirm --onefile --windowed main.py
-          } elseif (Test-Path "icon.ico") {
-              Write-Host "🧩 Building with icon.ico"
-              pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+            pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
           } else {
-              Write-Host "🔧 No icon.ico found, building default exe"
-              pyinstaller --noconfirm --onefile --windowed main.py
+            pyinstaller --noconfirm --onefile --windowed main.py
           }
 
       - name: Upload EXE artifact
