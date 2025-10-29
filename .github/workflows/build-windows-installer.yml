@@ -2,8 +2,7 @@ name: Build Windows Installer
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -24,40 +23,60 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if (Test-Path "requirements.txt") {
-            Write-Host "Installing dependencies from requirements.txt..."
             pip install -r requirements.txt
-          } else {
-            Write-Host "No requirements.txt found, skipping..."
           }
           pip install pyinstaller pillow
 
-      - name: Build Windows EXE (skip icon if invalid)
+      - name: Build Windows EXE (auto skip bad icon)
         shell: pwsh
         run: |
-          Write-Host "Starting Windows build..."
+          Write-Host "🏗 Starting Windows build..."
 
-          $useIcon = $false
-
+          $iconValid = $false
           if (Test-Path "icon.ico") {
             try {
-              Add-Type -AssemblyName System.Drawing
-              $icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path "icon.ico"))
-              if ($icon) {
-                Write-Host "✅ icon.ico appears valid"
-                $useIcon = $true
-              } else {
-                Write-Host "⚠️ icon.ico invalid or unreadable, skipping"
+              # Try to open icon with Pillow directly for real validation
+              python - <<'PYCODE'
+from PIL import Image
+try:
+    with Image.open("icon.ico") as im:
+        im.verify()
+    print("ICON_OK")
+except Exception as e:
+    print("ICON_BAD")
+PYCODE
+              if ($LASTEXITCODE -eq 0) {
+                $out = python - <<'PYCODE'
+from PIL import Image
+try:
+    with Image.open("icon.ico") as im:
+        im.verify()
+    print("ICON_OK")
+except Exception:
+    print("ICON_BAD")
+PYCODE
+                if ($out -match "ICON_OK") {
+                  Write-Host "✅ icon.ico is valid"
+                  $iconValid = $true
+                } else {
+                  Write-Host "⚠️ icon.ico failed validation — skipping"
+                }
               }
             } catch {
-              Write-Host "⚠️ Error reading icon.ico, skipping"
+              Write-Host "⚠️ Exception checking icon.ico — skipping"
             }
           } else {
-            Write-Host "⚠️ icon.ico not found, skipping"
+            Write-Host "⚠️ icon.ico not found — skipping"
           }
 
-          if ($useIcon) {
-            Write-Host "Building with icon.ico..."
+          # Try build with or without icon accordingly
+          if ($iconValid) {
+            Write-Host "Building with icon..."
             pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "⚠️ Build failed with icon. Retrying without..."
+              pyinstaller --noconfirm --onefile --windowed main.py
+            }
           } else {
             Write-Host "Building without icon..."
             pyinstaller --noconfirm --onefile --windowed main.py
