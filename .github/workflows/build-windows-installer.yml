@@ -1,0 +1,83 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build EXE with PyInstaller
+        run: pyinstaller --onefile --windowed --icon=icon.ico main.py
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Prepare installer package
+        shell: pwsh
+        run: |
+          mkdir package
+          Copy-Item dist\main.exe package\DeliveryNote.exe
+          Copy-Item sample_logo.png package\
+          Copy-Item icon.ico package\
+          New-Item -ItemType Directory -Path package\Database
+          New-Item -ItemType Directory -Path package\Backups
+          New-Item -ItemType Directory -Path package\DeliveryNotes
+          New-Item -ItemType File -Path package\Database\delivery_notes.db
+
+      - name: Create installer script
+        shell: pwsh
+        run: |
+          $script = @"
+[Setup]
+AppName=Simuka Upenye (Pvt) Ltd Delivery Note System
+AppVersion=2.0 (Build 2025-10-29)
+DefaultDirName=C:\SimukaUpenye
+DefaultGroupName=Simuka Upenye
+OutputDir=Output
+OutputBaseFilename=SimukaUpenyeDeliveryNoteSetup_v2
+Compression=lzma
+SolidCompression=yes
+SetupIconFile=package\icon.ico
+UninstallDisplayIcon={app}\DeliveryNote.exe
+PrivilegesRequired=none
+
+[Files]
+Source: "package\*"; DestDir: "{app}"; Flags: recursesubdirs
+
+[Icons]
+Name: "{autoprograms}\Simuka Upenye Delivery Note System"; Filename: "{app}\DeliveryNote.exe"
+Name: "{autodesktop}\Delivery Note System"; Filename: "{app}\DeliveryNote.exe"
+
+[Run]
+Filename: "{app}\DeliveryNote.exe"; Description: "Launch Delivery Note System"; Flags: nowait postinstall skipifsilent
+
+[Messages]
+SetupAppTitle=Simuka Upenye (Pvt) Ltd — Delivery Note System Installer
+FinishedLabel=Installation Complete — Starting Application…
+"@
+          Set-Content -Path installer_script.iss -Value $script -Encoding UTF8
+
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer_script.iss'
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimukaUpenyeDeliveryNoteSetup_v2
+          path: Output/SimukaUpenyeDeliveryNoteSetup_v2.exe
