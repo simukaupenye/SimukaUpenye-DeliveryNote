@@ -20,11 +20,15 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          if exist requirements.txt (
+          if (Test-Path "requirements.txt") {
+            Write-Host "Installing dependencies from requirements.txt..."
             pip install -r requirements.txt
-          )
+          } else {
+            Write-Host "No requirements.txt found, skipping..."
+          }
           pip install pyinstaller pillow
 
       - name: Build Windows EXE (skip icon if invalid)
@@ -39,24 +43,37 @@ jobs:
               Add-Type -AssemblyName System.Drawing
               $icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path "icon.ico"))
               if ($icon) {
-                Write-Host "icon.ico appears valid"
+                Write-Host "✅ icon.ico appears valid"
                 $useIcon = $true
               } else {
-                Write-Host "icon.ico invalid or unreadable, skipping"
+                Write-Host "⚠️ icon.ico invalid or unreadable, skipping"
               }
             } catch {
-              Write-Host "Error reading icon.ico, skipping"
+              Write-Host "⚠️ Error reading icon.ico, skipping"
             }
           } else {
-            Write-Host "icon.ico not found, skipping"
+            Write-Host "⚠️ icon.ico not found, skipping"
           }
 
           if ($useIcon) {
-            Write-Host "✅ Building with icon.ico"
+            Write-Host "Building with icon.ico..."
             pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
           } else {
-            Write-Host "⚠️ Building without icon"
+            Write-Host "Building without icon..."
             pyinstaller --noconfirm --onefile --windowed main.py
+          }
+
+      - name: Rename EXE with commit hash
+        shell: pwsh
+        run: |
+          $commit = (git rev-parse --short HEAD)
+          $exePath = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
+          if ($exePath) {
+            $newName = [System.IO.Path]::Combine($exePath.DirectoryName, "SimukaUpenye-DeliveryNote_$commit.exe")
+            Rename-Item -Path $exePath.FullName -NewName $newName
+            Write-Host "✅ Renamed EXE to: $newName"
+          } else {
+            Write-Host "❌ No EXE found to rename."
           }
 
       - name: Upload EXE artifact
