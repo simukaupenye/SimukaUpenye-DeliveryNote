@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  pull_request:
 
 jobs:
   build:
@@ -17,30 +17,47 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
-        shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          if (Test-Path "requirements.txt") {
-            pip install -r requirements.txt
-          }
           pip install pyinstaller pillow
 
-      - name: Build executable with PyInstaller
+      - name: Build Windows EXE
         shell: pwsh
         run: |
+          # Check if icon.ico exists and is valid
           if (Test-Path "icon.ico") {
-            Write-Host "Building with icon.ico"
-            pyinstaller --onefile --windowed --icon=icon.ico main.py
-          } else {
-            Write-Host "No icon.ico found. Building without icon."
-            pyinstaller --onefile --windowed main.py
+            try {
+              python - << 'EOF'
+from PIL import Image
+try:
+    Image.open("icon.ico").verify()
+    print("✅ icon.ico is valid")
+except Exception as e:
+    print("❌ icon.ico invalid:", e)
+    open("skip_icon.txt", "w").write("1")
+EOF
+            } catch {
+              Write-Host "Error checking icon.ico"
+            }
           }
 
-      - name: Upload executable as artifact
+          # Build the executable
+          if (Test-Path "skip_icon.txt") {
+            Write-Host "⚠️ Skipping icon.ico due to validation failure"
+            pyinstaller --noconfirm --onefile --windowed main.py
+          } elseif (Test-Path "icon.ico") {
+            Write-Host "🧩 Building with custom icon.ico"
+            pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+          } else {
+            Write-Host "🔧 No icon.ico found, building default exe"
+            pyinstaller --noconfirm --onefile --windowed main.py
+          }
+
+      - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SimukaUpenye-DeliveryNote-Installer
-          path: dist/
+          name: Windows-Installer
+          path: dist/main.exe
