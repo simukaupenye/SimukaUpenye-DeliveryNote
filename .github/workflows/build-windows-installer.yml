@@ -40,7 +40,7 @@ jobs:
           New-Item -ItemType Directory -Path package\DeliveryNotes
           New-Item -ItemType File -Path package\Database\delivery_notes.db
 
-      - name:       - name: Create installer script
+      - name: Create installer script
         shell: pwsh
         run: |
           $installerScript = @'
@@ -71,38 +71,6 @@ Filename: "{app}\DeliveryNote.exe"; Description: "Launch Delivery Note System"; 
 SetupAppTitle=Simuka Upenye (Pvt) Ltd — Delivery Note System Installer
 FinishedLabel=Installation Complete — Starting Application…
 '@
-          Set-Content -Path installer_script.iss -Value $installerScript -Encoding UTF8
-Create installer script
-        shell: pwsh
-        run: |
-          $installerScript = @"
-[Setup]
-AppName=Simuka Upenye (Pvt) Ltd Delivery Note System
-AppVersion=2.0 (Build 2025-10-29)
-DefaultDirName=C:\SimukaUpenye
-DefaultGroupName=Simuka Upenye
-OutputDir=Output
-OutputBaseFilename=SimukaUpenyeDeliveryNoteSetup_v2
-Compression=lzma
-SolidCompression=yes
-SetupIconFile=package\icon.ico
-UninstallDisplayIcon={app}\DeliveryNote.exe
-PrivilegesRequired=none
-
-[Files]
-Source: "package\*"; DestDir: "{app}"; Flags: recursesubdirs
-
-[Icons]
-Name: "{autoprograms}\Simuka Upenye Delivery Note System"; Filename: "{app}\DeliveryNote.exe"
-Name: "{autodesktop}\Delivery Note System"; Filename: "{app}\DeliveryNote.exe"
-
-[Run]
-Filename: "{app}\DeliveryNote.exe"; Description: "Launch Delivery Note System"; Flags: nowait postinstall skipifsilent
-
-[Messages]
-SetupAppTitle=Simuka Upenye (Pvt) Ltd — Delivery Note System Installer
-FinishedLabel=Installation Complete — Starting Application…
-"@
           Set-Content -Path installer_script.iss -Value $installerScript -Encoding UTF8
 
       - name: Build installer
