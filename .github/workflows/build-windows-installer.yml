@@ -2,7 +2,7 @@ name: Build Windows Installer
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -35,18 +35,7 @@ jobs:
           $iconValid = $false
           if (Test-Path "icon.ico") {
             try {
-              # Try to open icon with Pillow directly for real validation
-              python - <<'PYCODE'
-from PIL import Image
-try:
-    with Image.open("icon.ico") as im:
-        im.verify()
-    print("ICON_OK")
-except Exception as e:
-    print("ICON_BAD")
-PYCODE
-              if ($LASTEXITCODE -eq 0) {
-                $out = python - <<'PYCODE'
+              $iconCheck = python - <<'PYCODE'
 from PIL import Image
 try:
     with Image.open("icon.ico") as im:
@@ -55,26 +44,24 @@ try:
 except Exception:
     print("ICON_BAD")
 PYCODE
-                if ($out -match "ICON_OK") {
-                  Write-Host "✅ icon.ico is valid"
-                  $iconValid = $true
-                } else {
-                  Write-Host "⚠️ icon.ico failed validation — skipping"
-                }
+              if ($iconCheck -match "ICON_OK") {
+                Write-Host "✅ icon.ico is valid"
+                $iconValid = $true
+              } else {
+                Write-Host "⚠️ icon.ico failed validation — skipping"
               }
             } catch {
-              Write-Host "⚠️ Exception checking icon.ico — skipping"
+              Write-Host "⚠️ Exception while checking icon.ico — skipping"
             }
           } else {
             Write-Host "⚠️ icon.ico not found — skipping"
           }
 
-          # Try build with or without icon accordingly
           if ($iconValid) {
             Write-Host "Building with icon..."
             pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
             if ($LASTEXITCODE -ne 0) {
-              Write-Host "⚠️ Build failed with icon. Retrying without..."
+              Write-Host "⚠️ Build failed with icon. Retrying without icon..."
               pyinstaller --noconfirm --onefile --windowed main.py
             }
           } else {
