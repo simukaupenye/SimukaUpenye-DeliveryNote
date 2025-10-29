@@ -27,37 +27,38 @@ jobs:
           }
           pip install pyinstaller pillow
 
-      - name: Build Windows EXE (skip bad icon automatically)
+      - name: Build Windows EXE
         shell: pwsh
         run: |
           Write-Host "🏗 Starting Windows build..."
+
           $iconValid = $false
 
           if (Test-Path "icon.ico") {
-            $check = python -c "from PIL import Image; import sys; 
-try: 
-    with Image.open('icon.ico') as im: im.verify(); sys.exit(0)
-except Exception: 
+            python -c "from PIL import Image; import sys; 
+try:
+    with Image.open('icon.ico') as im: im.verify()
+except Exception:
     sys.exit(1)"
             if ($LASTEXITCODE -eq 0) {
-              Write-Host "✅ icon.ico is valid"
+              Write-Host '✅ icon.ico is valid'
               $iconValid = $true
             } else {
-              Write-Host "⚠️ icon.ico is invalid — skipping icon"
+              Write-Host '⚠️ icon.ico is invalid — skipping icon'
             }
           } else {
-            Write-Host "⚠️ icon.ico not found — skipping icon"
+            Write-Host '⚠️ icon.ico not found — skipping icon'
           }
 
           if ($iconValid) {
-            Write-Host "Building with icon..."
+            Write-Host 'Building with icon...'
             pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
             if ($LASTEXITCODE -ne 0) {
-              Write-Host "⚠️ Build failed with icon. Retrying without icon..."
+              Write-Host '⚠️ Build failed with icon. Retrying without icon...'
               pyinstaller --noconfirm --onefile --windowed main.py
             }
           } else {
-            Write-Host "Building without icon..."
+            Write-Host 'Building without icon...'
             pyinstaller --noconfirm --onefile --windowed main.py
           }
 
