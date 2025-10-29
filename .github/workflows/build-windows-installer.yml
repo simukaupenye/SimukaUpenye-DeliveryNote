@@ -27,32 +27,26 @@ jobs:
           }
           pip install pyinstaller pillow
 
-      - name: Build Windows EXE (auto skip bad icon)
+      - name: Build Windows EXE (skip bad icon automatically)
         shell: pwsh
         run: |
           Write-Host "🏗 Starting Windows build..."
-
           $iconValid = $false
+
           if (Test-Path "icon.ico") {
-            try {
-              $result = python -c "from PIL import Image; 
-try:
-    with Image.open('icon.ico') as im:
-        im.verify()
-    print('ICON_OK')
-except Exception:
-    print('ICON_BAD')"
-              if ($result -match "ICON_OK") {
-                Write-Host "✅ icon.ico is valid"
-                $iconValid = $true
-              } else {
-                Write-Host "⚠️ icon.ico failed validation — skipping"
-              }
-            } catch {
-              Write-Host "⚠️ Exception while checking icon.ico — skipping"
+            $check = python -c "from PIL import Image; import sys; 
+try: 
+    with Image.open('icon.ico') as im: im.verify(); sys.exit(0)
+except Exception: 
+    sys.exit(1)"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ icon.ico is valid"
+              $iconValid = $true
+            } else {
+              Write-Host "⚠️ icon.ico is invalid — skipping icon"
             }
           } else {
-            Write-Host "⚠️ icon.ico not found — skipping"
+            Write-Host "⚠️ icon.ico not found — skipping icon"
           }
 
           if ($iconValid) {
