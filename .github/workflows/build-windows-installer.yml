@@ -29,8 +29,8 @@ jobs:
         run: |
           # Validate icon.ico if it exists
           if (Test-Path "icon.ico") {
-            Write-Host "🔍 Checking icon validity..."
-            python - <<'EOF'
+              Write-Host "🔍 Checking icon validity..."
+              python - <<'EOF'
 from PIL import Image
 try:
     Image.open("icon.ico").verify()
@@ -43,14 +43,14 @@ EOF
 
           # Build executable depending on icon validity
           if (Test-Path "skip_icon.txt") {
-            Write-Host "⚠️ Skipping icon.ico due to validation failure"
-            pyinstaller --noconfirm --onefile --windowed main.py
+              Write-Host "⚠️ Skipping icon.ico due to validation failure"
+              pyinstaller --noconfirm --onefile --windowed main.py
           } elseif (Test-Path "icon.ico") {
-            Write-Host "🧩 Building with icon.ico"
-            pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+              Write-Host "🧩 Building with icon.ico"
+              pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
           } else {
-            Write-Host "🔧 No icon.ico found, building default exe"
-            pyinstaller --noconfirm --onefile --windowed main.py
+              Write-Host "🔧 No icon.ico found, building default exe"
+              pyinstaller --noconfirm --onefile --windowed main.py
           }
 
       - name: Upload EXE artifact
