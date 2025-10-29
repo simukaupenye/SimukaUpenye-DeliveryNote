@@ -31,29 +31,31 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Starting Windows build..."
+
           $useIcon = $false
+
           if (Test-Path "icon.ico") {
             try {
-              python - <<'PYCODE'
-from PIL import Image
-try:
-    Image.open("icon.ico").verify()
-    print("icon.ico is valid")
-except Exception as e:
-    print("icon.ico invalid:", e)
-    raise SystemExit(1)
-PYCODE
-              if ($LASTEXITCODE -eq 0) { $useIcon = $true }
+              Add-Type -AssemblyName System.Drawing
+              $icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path "icon.ico"))
+              if ($icon) {
+                Write-Host "icon.ico appears valid"
+                $useIcon = $true
+              } else {
+                Write-Host "icon.ico invalid or unreadable, skipping"
+              }
             } catch {
-              Write-Host "Skipping icon.ico due to validation error"
+              Write-Host "Error reading icon.ico, skipping"
             }
+          } else {
+            Write-Host "icon.ico not found, skipping"
           }
 
           if ($useIcon) {
-            Write-Host "Building with icon.ico"
+            Write-Host "✅ Building with icon.ico"
             pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
           } else {
-            Write-Host "Building without icon"
+            Write-Host "⚠️ Building without icon"
             pyinstaller --noconfirm --onefile --windowed main.py
           }
 
