@@ -2,7 +2,7 @@ name: Build Windows Installer
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -11,63 +11,54 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          if (Test-Path "requirements.txt") {
-            pip install -r requirements.txt
-          }
+          pip install -r requirements.txt
+          pip install pillow pyinstaller
 
-      - name: Validate icon (skip on error)
+      - name: Check icon validity
         shell: pwsh
         run: |
-          Write-Host "🔍 Checking icon.ico validity..."
-          try {
-            python - <<'PYCODE'
-import sys
-from PIL import Image
+          python - <<'PYCODE'
+          import sys
+          from PIL import Image
 
-try:
-    with Image.open("icon.ico") as im:
-        im.verify()
-    print("✅ icon.ico is valid")
-except Exception as e:
-    print(f"⚠️ icon.ico validation failed, continuing anyway: {e}")
-PYCODE
-          } catch {
-            Write-Host "⚠️ Python validation failed, continuing anyway..."
-          }
+          try:
+              with Image.open("icon.ico") as im:
+                  im.verify()
+              print("ICON_OK")
+          except Exception:
+              print("ICON_BAD")
+          PYCODE
 
-      - name: Build EXE with PyInstaller
+      - name: Build executable with PyInstaller
         shell: pwsh
         run: |
-          Write-Host "🚀 Starting Windows build..."
-          pyinstaller --onefile --noconsole --icon "icon.ico" main.py
+          pyinstaller --noconfirm --onefile --windowed ^
+            --icon=icon.ico ^
+            --name "MyApp" ^
+            main.py
 
       - name: Rename EXE with commit hash
         shell: pwsh
         run: |
           $commit = (git rev-parse --short HEAD)
-          $exePath = "dist/main.exe"
-          if (Test-Path $exePath) {
-            $newName = "dist/SimukaUpenye-DeliveryNote-$commit.exe"
-            Rename-Item -Path $exePath -NewName $newName
-            Write-Host "✅ Renamed EXE to $newName"
-          } else {
-            Write-Host "⚠️ EXE not found to rename."
-          }
+          $oldPath = "dist\\MyApp.exe"
+          $newPath = "dist\\MyApp-$commit.exe"
+          Rename-Item $oldPath $newPath
 
-      - name: Upload EXE artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Windows-EXE
+          name: windows-installer
           path: dist/*.exe
