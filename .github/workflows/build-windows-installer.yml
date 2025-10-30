@@ -32,12 +32,6 @@ jobs:
         run: |
           choco install nsis -y
 
-      - name: Verify NSIS installation
-        shell: pwsh
-        run: |
-          Write-Host "Checking if makensis exists..."
-          Get-ChildItem "C:\Program Files (x86)\NSIS" -Recurse | Where-Object { $_.Name -eq "makensis.exe" }
-
       - name: Create NSIS script
         shell: pwsh
         run: |
@@ -58,8 +52,17 @@ jobs:
       - name: Create installer with NSIS
         shell: pwsh
         run: |
-          Write-Host "Creating installer using NSIS..."
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+          Write-Host "Creating installer using full path to makensis..."
+          $makensisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-Not (Test-Path $makensisPath)) {
+              Write-Host "makensis.exe not found in Program Files (x86). Trying Program Files..."
+              $makensisPath = "C:\Program Files\NSIS\makensis.exe"
+          }
+          if (-Not (Test-Path $makensisPath)) {
+              Write-Error "Could not find makensis.exe. NSIS may not have installed correctly."
+              exit 1
+          }
+          & "$makensisPath" installer.nsi
 
       - name: Package installer into double ZIP
         shell: pwsh
