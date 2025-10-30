@@ -2,15 +2,16 @@ name: Build Windows Installer
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build EXE on Windows
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -25,58 +26,48 @@ jobs:
           if (Test-Path "requirements.txt") {
             pip install -r requirements.txt
           }
-          pip install pyinstaller pillow
 
-      - name: Build Windows EXE
+      - name: Validate icon (skip on error)
         shell: pwsh
         run: |
-          Write-Host "🏗 Starting Windows build..."
+          Write-Host "🔍 Checking icon.ico validity..."
+          try {
+            python - <<'PYCODE'
+import sys
+from PIL import Image
 
-          $iconValid = $false
-
-          if (Test-Path "icon.ico") {
-            python -c "from PIL import Image; import sys; 
 try:
-    with Image.open('icon.ico') as im: im.verify()
-except Exception:
-    sys.exit(1)"
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host '✅ icon.ico is valid'
-              $iconValid = $true
-            } else {
-              Write-Host '⚠️ icon.ico is invalid — skipping icon'
-            }
-          } else {
-            Write-Host '⚠️ icon.ico not found — skipping icon'
+    with Image.open("icon.ico") as im:
+        im.verify()
+    print("✅ icon.ico is valid")
+except Exception as e:
+    print(f"⚠️ icon.ico validation failed, continuing anyway: {e}")
+PYCODE
+          } catch {
+            Write-Host "⚠️ Python validation failed, continuing anyway..."
           }
 
-          if ($iconValid) {
-            Write-Host 'Building with icon...'
-            pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host '⚠️ Build failed with icon. Retrying without icon...'
-              pyinstaller --noconfirm --onefile --windowed main.py
-            }
-          } else {
-            Write-Host 'Building without icon...'
-            pyinstaller --noconfirm --onefile --windowed main.py
-          }
+      - name: Build EXE with PyInstaller
+        shell: pwsh
+        run: |
+          Write-Host "🚀 Starting Windows build..."
+          pyinstaller --onefile --noconsole --icon "icon.ico" main.py
 
       - name: Rename EXE with commit hash
         shell: pwsh
         run: |
           $commit = (git rev-parse --short HEAD)
-          $exePath = Get-ChildItem -Path dist -Filter *.exe | Select-Object -First 1
-          if ($exePath) {
-            $newName = [System.IO.Path]::Combine($exePath.DirectoryName, "SimukaUpenye-DeliveryNote_$commit.exe")
-            Rename-Item -Path $exePath.FullName -NewName $newName
-            Write-Host "✅ Renamed EXE to: $newName"
+          $exePath = "dist/main.exe"
+          if (Test-Path $exePath) {
+            $newName = "dist/SimukaUpenye-DeliveryNote-$commit.exe"
+            Rename-Item -Path $exePath -NewName $newName
+            Write-Host "✅ Renamed EXE to $newName"
           } else {
-            Write-Host "❌ No EXE found to rename."
+            Write-Host "⚠️ EXE not found to rename."
           }
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DeliveryNoteInstaller
+          name: Windows-EXE
           path: dist/*.exe
