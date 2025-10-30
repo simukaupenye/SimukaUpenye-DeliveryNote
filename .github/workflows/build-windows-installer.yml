@@ -1,6 +1,9 @@
-name: Build Windows EXE
+name: Build Windows App
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -8,56 +11,32 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller reportlab
 
-      - name: Create fixed main app file
+      - name: Build executable
         run: |
-          echo "import tkinter as tk" > main.py
-          echo "from tkinter import messagebox" >> main.py
-          echo "" >> main.py
-          echo "def open_main_window():" >> main.py
-          echo "    main = tk.Tk()" >> main.py
-          echo "    main.title('Simuka Upenye Delivery Note Entry')" >> main.py
-          echo "    main.geometry('700x500')" >> main.py
-          echo "    tk.Label(main, text='Delivery Note Entry Form', font=('Arial', 14, 'bold')).pack(pady=20)" >> main.py
-          echo "    tk.Label(main, text='Customer Name:').pack()" >> main.py
-          echo "    tk.Entry(main).pack()" >> main.py
-          echo "    tk.Label(main, text='Delivery Address:').pack()" >> main.py
-          echo "    tk.Entry(main).pack()" >> main.py
-          echo "    tk.Label(main, text='Product:').pack()" >> main.py
-          echo "    tk.Entry(main).pack()" >> main.py
-          echo "    tk.Button(main, text='Submit', command=lambda: messagebox.showinfo('Saved', 'Delivery note saved successfully!')).pack(pady=10)" >> main.py
-          echo "    main.mainloop()" >> main.py
-          echo "" >> main.py
-          echo "def show_main_window():" >> main.py
-          echo "    splash.destroy()" >> main.py
-          echo "    open_main_window()" >> main.py
-          echo "" >> main.py
-          echo "splash = tk.Tk()" >> main.py
-          echo "splash.title('Simuka Upenye Delivery Note System')" >> main.py
-          echo "splash.geometry('500x200')" >> main.py
-          echo "label = tk.Label(splash, text='Welcome to Simuka Upenye Delivery Note System!', font=('Arial', 12))" >> main.py
-          echo "label.pack(expand=True)" >> main.py
-          echo "splash.after(2000, show_main_window)" >> main.py
-          echo "splash.mainloop()" >> main.py
+          pyinstaller --onefile --noconsole --icon=icon.ico main.py
 
-      - name: Build executable with PyInstaller
+      - name: Create installer ZIP
         run: |
-          pyinstaller --onefile --noconsole main.py
+          mkdir output
+          copy dist\main.exe output\
+          copy icon.ico output\
+          cd output
+          powershell Compress-Archive * ../SimukaUpenyeInstaller.zip
 
-      - name: Upload EXE artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Simuka-Upenye-Delivery-Note
-          path: dist/main.exe
+          name: SimukaUpenyeInstaller
+          path: SimukaUpenyeInstaller.zip
