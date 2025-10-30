@@ -21,21 +21,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Create main app file
+      - name: Create fixed main app file
         run: |
           echo "import tkinter as tk" > main.py
           echo "from tkinter import messagebox" >> main.py
-          echo "" >> main.py
-          echo "def show_main_window():" >> main.py
-          echo "    splash.destroy()" >> main.py
-          echo "    open_main_window()" >> main.py
-          echo "" >> main.py
-          echo "splash = tk.Tk()" >> main.py
-          echo "splash.title('Simuka Upenye Delivery Note System')" >> main.py
-          echo "splash.geometry('500x200')" >> main.py
-          echo "label = tk.Label(splash, text='Welcome to Simuka Upenye Delivery Note System!', font=('Arial', 12))" >> main.py
-          echo "label.pack(expand=True)" >> main.py
-          echo "splash.after(2000, show_main_window)" >> main.py
           echo "" >> main.py
           echo "def open_main_window():" >> main.py
           echo "    main = tk.Tk()" >> main.py
@@ -51,6 +40,16 @@ jobs:
           echo "    tk.Button(main, text='Submit', command=lambda: messagebox.showinfo('Saved', 'Delivery note saved successfully!')).pack(pady=10)" >> main.py
           echo "    main.mainloop()" >> main.py
           echo "" >> main.py
+          echo "def show_main_window():" >> main.py
+          echo "    splash.destroy()" >> main.py
+          echo "    open_main_window()" >> main.py
+          echo "" >> main.py
+          echo "splash = tk.Tk()" >> main.py
+          echo "splash.title('Simuka Upenye Delivery Note System')" >> main.py
+          echo "splash.geometry('500x200')" >> main.py
+          echo "label = tk.Label(splash, text='Welcome to Simuka Upenye Delivery Note System!', font=('Arial', 12))" >> main.py
+          echo "label.pack(expand=True)" >> main.py
+          echo "splash.after(2000, show_main_window)" >> main.py
           echo "splash.mainloop()" >> main.py
 
       - name: Build executable with PyInstaller
