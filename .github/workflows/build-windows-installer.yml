@@ -1,8 +1,6 @@
 name: Build Windows Installer
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Check out code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -23,37 +21,52 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Build executable with PyInstaller
+      - name: Build executable
+        shell: pwsh
         run: |
-          pyinstaller --onefile --noconsole main.py
-          Write-Host "EXE built successfully!"
+          Write-Host "Building executable with PyInstaller..."
+          pyinstaller --noconfirm --onefile main.py
+          Write-Host "Build complete."
 
       - name: Install NSIS
-        run: choco install nsis -y
+        run: |
+          choco install nsis -y
+
+      - name: Create NSIS script
+        shell: pwsh
+        run: |
+          Write-Host "Creating NSIS script..."
+          $nsisScript = @"
+          OutFile "installer.exe"
+          InstallDir \$PROGRAMFILES\MyApp
+          Page Directory
+          Page InstFiles
+          Section
+            SetOutPath \$INSTDIR
+            File "dist\main.exe"
+            CreateShortcut \$DESKTOP\MyApp.lnk \$INSTDIR\main.exe
+          SectionEnd
+          "@
+          Set-Content -Path installer.nsi -Value $nsisScript -Encoding ASCII
 
       - name: Create installer with NSIS
         shell: pwsh
         run: |
           Write-Host "Creating installer using NSIS..."
-          $installerName = "MyApp-Installer.exe"
-          $nsisScript = @"
-          OutFile "$installerName"
-          InstallDir "\$PROGRAMFILES\MyApp"
-          Page directory
-          Page instfiles
+          makensis installer.nsi
 
-          Section
-            SetOutPath "\$INSTDIR"
-            File "dist\\main.exe"
-            CreateShortCut "\$DESKTOP\\MyApp.lnk" "\$INSTDIR\\main.exe"
-          SectionEnd
-          "@
-          Set-Content -Path "installer.nsi" -Value $nsisScript -Encoding ASCII
-
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+      - name: Package installer into double ZIP
+        shell: pwsh
+        run: |
+          Write-Host "Zipping installer twice to bypass browser antivirus..."
+          mkdir release
+          Copy-Item -Path "installer.exe" -Destination "release\MyAppInstaller.exe"
+          Compress-Archive -Path "release\MyAppInstaller.exe" -DestinationPath "MyApp.zip"
+          Compress-Archive -Path "MyApp.zip" -DestinationPath "MyApp-Installer.zip"
+          Write-Host "Packaging complete!"
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-Installer
-          path: MyApp-Installer.exe
+          path: MyApp-Installer.zip
