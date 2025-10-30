@@ -46,15 +46,11 @@ jobs:
           echo "version=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Detected version: $version"
 
-      - name: Build executable
+      - name: Build executable (no icon)
         shell: pwsh
         run: |
-          Write-Host "Building executable with PyInstaller..."
-          if (Test-Path "icon.ico") {
-            pyinstaller --noconfirm --onefile --windowed --icon "icon.ico" main.py
-          } else {
-            pyinstaller --noconfirm --onefile --windowed main.py
-          }
+          Write-Host "Building executable WITHOUT icon..."
+          pyinstaller --noconfirm --onefile --windowed main.py
 
       - name: Install NSIS
         shell: pwsh
