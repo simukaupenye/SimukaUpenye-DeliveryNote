@@ -31,24 +31,24 @@ jobs:
         run: |
           Write-Host "Checking icon validity..."
           try {
-              python - <<'PYCODE'
+              python -c "
 from PIL import Image
 try:
-    with Image.open("icon.ico") as im:
+    with Image.open('icon.ico') as im:
         im.verify()
-    print("ICON_OK")
+    print('ICON_OK')
 except Exception as e:
-    print("ICON_BAD:", e)
-PYCODE
+    print('ICON_BAD:', e)
+"
           } catch {
-              Write-Host "ICON_CHECK_FAILED"
+              Write-Host 'ICON_CHECK_FAILED'
           }
 
       - name: Build executable with PyInstaller
         shell: pwsh
         run: |
-          if (Test-Path "icon.ico") {
-              pyinstaller --noconfirm --onefile --windowed --icon "icon.ico" main.py
+          if (Test-Path 'icon.ico') {
+              pyinstaller --noconfirm --onefile --windowed --icon 'icon.ico' main.py
           } else {
               pyinstaller --noconfirm --onefile --windowed main.py
           }
