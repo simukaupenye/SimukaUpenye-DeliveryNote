@@ -22,57 +22,13 @@ jobs:
           pip install pyinstaller
 
       - name: Build executable
-        shell: pwsh
         run: |
-          Write-Host "Building executable with PyInstaller..."
-          pyinstaller --noconfirm --onefile main.py
-          Write-Host "Build complete."
+          pyinstaller --onefile --noconsole your_script_name.py
+        # ⬆️ Replace 'your_script_name.py' with your main Python file name
 
-      - name: Install NSIS
+      - name: Package executable into ZIP
         run: |
-          choco install nsis -y
-
-      - name: Create NSIS script
-        shell: pwsh
-        run: |
-          Write-Host "Creating NSIS script..."
-          $nsisScript = @"
-          OutFile "installer.exe"
-          InstallDir \$PROGRAMFILES\MyApp
-          Page Directory
-          Page InstFiles
-          Section
-            SetOutPath \$INSTDIR
-            File "dist\main.exe"
-            CreateShortcut \$DESKTOP\MyApp.lnk \$INSTDIR\main.exe
-          SectionEnd
-          "@
-          Set-Content -Path installer.nsi -Value $nsisScript -Encoding ASCII
-
-      - name: Create installer with NSIS
-        shell: pwsh
-        run: |
-          Write-Host "Creating installer using full path to makensis..."
-          $makensisPath = "C:\Program Files (x86)\NSIS\makensis.exe"
-          if (-Not (Test-Path $makensisPath)) {
-              Write-Host "makensis.exe not found in Program Files (x86). Trying Program Files..."
-              $makensisPath = "C:\Program Files\NSIS\makensis.exe"
-          }
-          if (-Not (Test-Path $makensisPath)) {
-              Write-Error "Could not find makensis.exe. NSIS may not have installed correctly."
-              exit 1
-          }
-          & "$makensisPath" installer.nsi
-
-      - name: Package installer into double ZIP
-        shell: pwsh
-        run: |
-          Write-Host "Zipping installer twice to bypass browser antivirus..."
-          mkdir release
-          Copy-Item -Path "installer.exe" -Destination "release\MyAppInstaller.exe"
-          Compress-Archive -Path "release\MyAppInstaller.exe" -DestinationPath "MyApp.zip"
-          Compress-Archive -Path "MyApp.zip" -DestinationPath "MyApp-Installer.zip"
-          Write-Host "Packaging complete!"
+          Compress-Archive -Path dist\*.exe -DestinationPath MyApp-Installer.zip
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
