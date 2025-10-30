@@ -25,7 +25,8 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --noconsole --icon=icon.ico main.py
+          pyinstaller --onefile --noconsole main.py
+
 
       - name: Create installer ZIP
         run: |
