@@ -29,24 +29,23 @@ jobs:
       - name: Check icon validity
         shell: pwsh
         run: |
-          python - <<'PYCODE'
-          import sys
+          $code = @"
           from PIL import Image
-
           try:
               with Image.open("icon.ico") as im:
                   im.verify()
               print("ICON_OK")
           except Exception:
               print("ICON_BAD")
-          PYCODE
+          "@
+          python -c $code
 
       - name: Build executable with PyInstaller
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --onefile --windowed ^
-            --icon=icon.ico ^
-            --name "MyApp" ^
+          pyinstaller --noconfirm --onefile --windowed `
+            --icon=icon.ico `
+            --name "MyApp" `
             main.py
 
       - name: Rename EXE with commit hash
