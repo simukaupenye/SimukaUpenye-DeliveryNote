@@ -2,8 +2,7 @@ name: Build Windows Installer
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +10,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Check out code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -22,67 +21,39 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if (Test-Path "requirements.txt") {
-            pip install -r requirements.txt
-          }
-          pip install pyinstaller toml
+          pip install pyinstaller
 
-      - name: Determine version
-        id: get_version
-        shell: pwsh
+      - name: Build executable with PyInstaller
         run: |
-          if (Test-Path "pyproject.toml") {
-            $content = Get-Content pyproject.toml -Raw
-            if ($content -match 'version\s*=\s*"([^"]+)"') {
-              $version = $matches[1]
-            } else {
-              $version = "0.1.0"
-            }
-          } elseif (Test-Path "version.txt") {
-            $version = Get-Content version.txt | Select-Object -First 1
-          } else {
-            $version = "0.1.0"
-          }
-          echo "version=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Detected version: $version"
-
-      - name: Build executable (no icon)
-        shell: pwsh
-        run: |
-          Write-Host "Building executable WITHOUT icon..."
-          pyinstaller --noconfirm --onefile --windowed main.py
+          pyinstaller --onefile --noconsole main.py
+          Write-Host "EXE built successfully!"
 
       - name: Install NSIS
-        shell: pwsh
-        run: |
-          choco install nsis -y
-          $env:NSIS_PATH = "C:\Program Files (x86)\NSIS"
-          echo "NSIS_PATH=$env:NSIS_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "NSIS installed at $env:NSIS_PATH"
+        run: choco install nsis -y
 
       - name: Create installer with NSIS
         shell: pwsh
         run: |
           Write-Host "Creating installer using NSIS..."
-          $installerName = "MyApp-Installer-v$env:version.exe"
+          $installerName = "MyApp-Installer.exe"
           $nsisScript = @"
           OutFile "$installerName"
-          InstallDir \$PROGRAMFILES\MyApp
+          InstallDir "\$PROGRAMFILES\MyApp"
           Page directory
           Page instfiles
 
           Section
-            SetOutPath \$INSTDIR
-            File dist\main.exe
-            CreateShortCut "\$DESKTOP\MyApp.lnk" "\$INSTDIR\main.exe"
+            SetOutPath "\$INSTDIR"
+            File "dist\\main.exe"
+            CreateShortCut "\$DESKTOP\\MyApp.lnk" "\$INSTDIR\\main.exe"
           SectionEnd
           "@
-          Set-Content -Path "installer.nsi" -Value $nsisScript
+          Set-Content -Path "installer.nsi" -Value $nsisScript -Encoding ASCII
 
-          & "$env:NSIS_PATH\makensis.exe" installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyApp-Installer-v${{ env.version }}
-          path: MyApp-Installer-v${{ env.version }}.exe
+          name: MyApp-Installer
+          path: MyApp-Installer.exe
