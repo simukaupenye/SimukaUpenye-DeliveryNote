@@ -32,12 +32,11 @@ jobs:
         run: |
           choco install nsis -y
 
-      - name: Add NSIS to PATH
+      - name: Verify NSIS installation
         shell: pwsh
         run: |
-          $nsisPath = "C:\Program Files (x86)\NSIS"
-          Write-Host "Adding NSIS to PATH: $nsisPath"
-          echo "$nsisPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Host "Checking if makensis exists..."
+          Get-ChildItem "C:\Program Files (x86)\NSIS" -Recurse | Where-Object { $_.Name -eq "makensis.exe" }
 
       - name: Create NSIS script
         shell: pwsh
@@ -60,7 +59,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Creating installer using NSIS..."
-          makensis installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
       - name: Package installer into double ZIP
         shell: pwsh
