@@ -56,13 +56,15 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y
+          $env:NSIS_PATH = "C:\Program Files (x86)\NSIS"
+          echo "NSIS_PATH=$env:NSIS_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "NSIS installed at $env:NSIS_PATH"
 
       - name: Create installer with NSIS
         shell: pwsh
         run: |
           Write-Host "Creating installer using NSIS..."
           $installerName = "MyApp-Installer-v$env:version.exe"
-
           $nsisScript = @"
           OutFile "$installerName"
           InstallDir \$PROGRAMFILES\MyApp
@@ -75,9 +77,9 @@ jobs:
             CreateShortCut "\$DESKTOP\MyApp.lnk" "\$INSTDIR\main.exe"
           SectionEnd
           "@
-
           Set-Content -Path "installer.nsi" -Value $nsisScript
-          makensis installer.nsi
+
+          & "$env:NSIS_PATH\makensis.exe" installer.nsi
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
