@@ -1,130 +1,175 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
+from datetime import datetime
 import csv
 import os
-from datetime import datetime
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from fpdf import FPDF
+import win32print
+import win32api
 
+# ---------- CONSTANT SUPPLIER INFO ----------
+SUPPLIER_NAME = "Simuka Upenye Pvt Ltd"
+SUPPLIER_ADDRESS = "Rippling Waters Farm, Macheke"
+SUPPLIER_PHONE = "078 519 5945"
+SUPPLIER_EMAIL = "jcwattson@yahoo.com"
 
-# ---------- Delivery Note Functions ----------
-def save_delivery_note(customer, address, product, quantity, note_type):
-    """Save delivery note to CSV."""
-    filename = "delivery_notes.csv"
-    file_exists = os.path.isfile(filename)
+# ---------- CSV FILE PATHS ----------
+CUSTOMERS_FILE = "customers.csv"
+TRANSPORTERS_FILE = "transporters.csv"
+PRODUCTS_FILE = "products.csv"
 
-    with open(filename, mode="a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(["Date", "Customer Name", "Address", "Product", "Quantity", "Type"])
-        writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), customer, address, product, quantity, note_type])
+# ---------- LOAD DROPDOWN DATA ----------
+def load_csv_data(file_path):
+    if not os.path.exists(file_path):
+        return []
+    with open(file_path, newline='', encoding='utf-8') as csvfile:
+        return [row[0] for row in csv.reader(csvfile) if row]
 
+# ---------- MAIN APP ----------
+class DeliveryNoteApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Simuka Upenye Delivery Note")
+        self.root.geometry("700x700")
 
-def generate_pdf(customer, address, product, quantity, note_type):
-    """Generate a printable PDF delivery note."""
-    folder = "delivery_notes"
-    os.makedirs(folder, exist_ok=True)
+        self.create_form()
 
-    pdf_filename = os.path.join(folder, f"DeliveryNote_{customer}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-    c = canvas.Canvas(pdf_filename, pagesize=A4)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(180, 800, "Simuka Upenye Delivery Note System")
+    def create_form(self):
+        frame = ttk.Frame(self.root, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
 
-    c.setFont("Helvetica", 12)
-    c.drawString(50, 760, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    c.drawString(50, 740, f"Customer: {customer}")
-    c.drawString(50, 720, f"Address: {address}")
-    c.drawString(50, 700, f"Product: {product}")
-    c.drawString(50, 680, f"Quantity: {quantity}")
-    c.drawString(50, 660, f"Type: {note_type}")
+        # Supplier Header
+        ttk.Label(frame, text=SUPPLIER_NAME, font=("Arial", 16, "bold")).grid(row=0, column=0, columnspan=4)
+        ttk.Label(frame, text=SUPPLIER_ADDRESS).grid(row=1, column=0, columnspan=4)
+        ttk.Label(frame, text=f"Phone: {SUPPLIER_PHONE} | Email: {SUPPLIER_EMAIL}").grid(row=2, column=0, columnspan=4, pady=(0, 10))
 
-    c.line(50, 640, 550, 640)
-    c.drawString(50, 620, "Received By: ______________________")
-    c.drawString(300, 620, "Signature: ______________________")
+        ttk.Separator(frame, orient="horizontal").grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
 
-    c.save()
-    messagebox.showinfo("Printed", f"Delivery note saved to:\n{pdf_filename}")
+        # Customer
+        ttk.Label(frame, text="Customer:").grid(row=4, column=0, sticky="e")
+        self.customer_var = tk.StringVar()
+        self.customer_cb = ttk.Combobox(frame, textvariable=self.customer_var, values=load_csv_data(CUSTOMERS_FILE))
+        self.customer_cb.grid(row=4, column=1, sticky="w")
 
+        # Transporter
+        ttk.Label(frame, text="Transporter:").grid(row=5, column=0, sticky="e")
+        self.transporter_var = tk.StringVar()
+        self.transporter_cb = ttk.Combobox(frame, textvariable=self.transporter_var, values=load_csv_data(TRANSPORTERS_FILE))
+        self.transporter_cb.grid(row=5, column=1, sticky="w")
 
-# ---------- GUI ----------
-def open_delivery_form(root):
-    """Opens the delivery note form."""
-    for widget in root.winfo_children():
-        widget.destroy()
+        # Driver Info
+        ttk.Label(frame, text="Driver Name:").grid(row=6, column=0, sticky="e")
+        self.driver_name = ttk.Entry(frame)
+        self.driver_name.grid(row=6, column=1)
 
-    tk.Label(root, text="Delivery Note Entry Form", font=("Helvetica", 16, "bold")).pack(pady=10)
+        ttk.Label(frame, text="Driver ID:").grid(row=6, column=2, sticky="e")
+        self.driver_id = ttk.Entry(frame)
+        self.driver_id.grid(row=6, column=3)
 
-    form_frame = tk.Frame(root)
-    form_frame.pack(pady=5)
+        # Vehicle Info
+        ttk.Label(frame, text="Truck Reg:").grid(row=7, column=0, sticky="e")
+        self.truck_reg = ttk.Entry(frame)
+        self.truck_reg.grid(row=7, column=1)
 
-    tk.Label(form_frame, text="Customer Name:").grid(row=0, column=0, sticky="e")
-    customer_entry = tk.Entry(form_frame, width=30)
-    customer_entry.grid(row=0, column=1, pady=3)
+        ttk.Label(frame, text="Trailer Reg:").grid(row=7, column=2, sticky="e")
+        self.trailer_reg = ttk.Entry(frame)
+        self.trailer_reg.grid(row=7, column=3)
 
-    tk.Label(form_frame, text="Delivery Address:").grid(row=1, column=0, sticky="e")
-    address_entry = tk.Entry(form_frame, width=30)
-    address_entry.grid(row=1, column=1, pady=3)
+        ttk.Separator(frame, orient="horizontal").grid(row=8, column=0, columnspan=4, sticky="ew", pady=10)
 
-    tk.Label(form_frame, text="Product:").grid(row=2, column=0, sticky="e")
-    product_entry = tk.Entry(form_frame, width=30)
-    product_entry.grid(row=2, column=1, pady=3)
+        # Product Details
+        ttk.Label(frame, text="Product:").grid(row=9, column=0, sticky="e")
+        self.product_var = tk.StringVar()
+        self.product_cb = ttk.Combobox(frame, textvariable=self.product_var, values=load_csv_data(PRODUCTS_FILE))
+        self.product_cb.grid(row=9, column=1)
 
-    tk.Label(form_frame, text="Quantity:").grid(row=3, column=0, sticky="e")
-    quantity_entry = tk.Entry(form_frame, width=30)
-    quantity_entry.grid(row=3, column=1, pady=3)
+        ttk.Label(frame, text="Quantity:").grid(row=9, column=2, sticky="e")
+        self.quantity = ttk.Entry(frame)
+        self.quantity.grid(row=9, column=3)
 
-    tk.Label(form_frame, text="Type (e.g. Bag, Ton):").grid(row=4, column=0, sticky="e")
-    type_entry = tk.Entry(form_frame, width=30)
-    type_entry.grid(row=4, column=1, pady=3)
+        ttk.Label(frame, text="Type:").grid(row=10, column=0, sticky="e")
+        self.type_entry = ttk.Entry(frame)
+        self.type_entry.grid(row=10, column=1)
 
-    def on_submit():
-        customer = customer_entry.get()
-        address = address_entry.get()
-        product = product_entry.get()
-        quantity = quantity_entry.get()
-        note_type = type_entry.get()
+        ttk.Label(frame, text="Destination:").grid(row=10, column=2, sticky="e")
+        self.destination = ttk.Entry(frame)
+        self.destination.grid(row=10, column=3)
 
-        if not all([customer, address, product, quantity, note_type]):
-            messagebox.showerror("Error", "All fields are required!")
+        ttk.Label(frame, text="Description:").grid(row=11, column=0, sticky="e")
+        self.description = ttk.Entry(frame, width=50)
+        self.description.grid(row=11, column=1, columnspan=3, sticky="we")
+
+        # Buttons
+        ttk.Button(frame, text="Save & Print", command=self.save_and_print).grid(row=12, column=1, pady=15)
+        ttk.Button(frame, text="New Delivery Note", command=self.reset_form).grid(row=12, column=2, pady=15)
+
+    # ---------- SAVE & PRINT ----------
+    def save_and_print(self):
+        customer = self.customer_var.get()
+        if not customer:
+            messagebox.showerror("Error", "Please select a Customer.")
             return
 
-        save_delivery_note(customer, address, product, quantity, note_type)
-        messagebox.showinfo("Saved", "Delivery note saved successfully!")
+        filename = f"DeliveryNote_{customer}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        pdf = FPDF(orientation='P', unit='mm', format='A4')
+        pdf.add_page()
 
-    def on_print():
-        customer = customer_entry.get()
-        address = address_entry.get()
-        product = product_entry.get()
-        quantity = quantity_entry.get()
-        note_type = type_entry.get()
+        # Header
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, SUPPLIER_NAME, ln=True, align="C")
+        pdf.set_font("Arial", "", 10)
+        pdf.cell(0, 6, SUPPLIER_ADDRESS, ln=True, align="C")
+        pdf.cell(0, 6, f"Phone: {SUPPLIER_PHONE} | Email: {SUPPLIER_EMAIL}", ln=True, align="C")
+        pdf.ln(10)
 
-        if not all([customer, address, product, quantity, note_type]):
-            messagebox.showerror("Error", "All fields are required to print!")
-            return
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "DELIVERY NOTE", ln=True, align="C")
+        pdf.ln(8)
 
-        generate_pdf(customer, address, product, quantity, note_type)
+        # Info
+        pdf.set_font("Arial", "", 10)
+        pdf.cell(0, 6, f"Customer: {self.customer_var.get()}", ln=True)
+        pdf.cell(0, 6, f"Transporter: {self.transporter_var.get()}", ln=True)
+        pdf.cell(0, 6, f"Driver: {self.driver_name.get()} | ID: {self.driver_id.get()}", ln=True)
+        pdf.cell(0, 6, f"Truck Reg: {self.truck_reg.get()} | Trailer Reg: {self.trailer_reg.get()}", ln=True)
+        pdf.cell(0, 6, f"Destination: {self.destination.get()}", ln=True)
+        pdf.ln(6)
 
-    button_frame = tk.Frame(root)
-    button_frame.pack(pady=10)
+        # Product Table
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(60, 8, "Product", 1)
+        pdf.cell(30, 8, "Quantity", 1)
+        pdf.cell(40, 8, "Type", 1)
+        pdf.cell(60, 8, "Description", 1, ln=True)
 
-    tk.Button(button_frame, text="Save", command=on_submit, width=10).grid(row=0, column=0, padx=5)
-    tk.Button(button_frame, text="Print", command=on_print, width=10).grid(row=0, column=1, padx=5)
+        pdf.set_font("Arial", "", 10)
+        pdf.cell(60, 8, self.product_var.get(), 1)
+        pdf.cell(30, 8, self.quantity.get(), 1)
+        pdf.cell(40, 8, self.type_entry.get(), 1)
+        pdf.cell(60, 8, self.description.get(), 1, ln=True)
 
+        pdf.ln(20)
+        pdf.cell(0, 8, "Transporter Signature: ____________________", ln=True)
+        pdf.cell(0, 8, "Supplier Signature: ____________________", ln=True)
 
-def main():
-    """App entry point."""
-    root = tk.Tk()
-    root.title("Simuka Upenye Delivery Note System")
-    root.geometry("500x400")
+        pdf.output(filename)
 
-    # Welcome Screen
-    tk.Label(root, text="Welcome to Simuka Upenye Delivery Note System!",
-             font=("Helvetica", 12)).pack(pady=100)
+        try:
+            win32api.ShellExecute(0, "print", filename, None, ".", 0)
+            messagebox.showinfo("Success", f"Saved and sent to printer:\n{filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not print automatically:\n{e}")
 
-    root.after(1500, lambda: open_delivery_form(root))  # Automatically open form after 1.5s delay
+    # ---------- RESET FORM ----------
+    def reset_form(self):
+        for var in [self.customer_var, self.transporter_var, self.product_var]:
+            var.set("")
+        for entry in [self.driver_name, self.driver_id, self.truck_reg, self.trailer_reg,
+                      self.quantity, self.type_entry, self.description, self.destination]:
+            entry.delete(0, tk.END)
 
-    root.mainloop()
-
-
+# ---------- RUN ----------
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = DeliveryNoteApp(root)
+    root.mainloop()
